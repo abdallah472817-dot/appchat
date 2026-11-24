@@ -24,8 +24,6 @@ jobs:
         working-directory: chatapp
         run: chmod +x gradlew
 
-      # The real Firebase config is never committed. Store its contents in the
-      # repository secret GOOGLE_SERVICES_JSON (base64 or plain JSON).
       - name: Provide google-services.json
         working-directory: chatapp/app
         env:
@@ -35,13 +33,17 @@ jobs:
             echo "::error::GOOGLE_SERVICES_JSON secret is missing"
             exit 1
           fi
-          printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > google-services.json 2>/dev/null             || printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
+          printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > google-services.json 2>/dev/null \
+            || printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
 
-      # Firebase registration must match the debug key's SHA-1.
       - name: Generate debug keystore and print SHA-1
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
           mkdir -p "$HOME/.android"
-          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+          if [ -n "$DEBUG_KEYSTORE_BASE64" ]; then
+            printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+          elif [ ! -f "$HOME/.android/debug.keystore" ]; then
             keytool -genkeypair -v \
               -keystore "$HOME/.android/debug.keystore" \
               -storepass android -keypass android \
